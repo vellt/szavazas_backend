@@ -154,7 +154,7 @@ app.post('/belepes', async (req, res) => {
 // VÉDETT
 app.post('/kijelentkezes', auth, async (req, res) => {
     res.clearCookie(COOKIE_NAME, { path: '/' });
-    res.status(200).json({message: "Sikeres kijelentkezés"})
+    res.status(200).json({ message: "Sikeres kijelentkezés" })
 })
 
 // VÉDETT
@@ -164,67 +164,97 @@ app.get('/adataim', auth, async (req, res) => {
 
 // VÉDETT
 app.put('/email', auth, async (req, res) => {
-    const {ujEmail}=req.body;
+    const { ujEmail } = req.body;
     // megnézem, hogy megadta-e body-ban az új emailt a felhasznalo
     if (!ujEmail) {
-        return res.status(401).json({message: "Az új email megadása kötelező"})
+        return res.status(401).json({ message: "Az új email megadása kötelező" })
     }
     // megnézem, hogy az email formátuma megfelelő-e
     const isValid = await emailValidator(ujEmail)
     if (!isValid) {
-        return res.status(402).json({message: "Az email formátuma nem megfelelő"})
+        return res.status(402).json({ message: "Az email formátuma nem megfelelő" })
     }
     try {
         // megnézem, hogy az email szerepel-e a rendszerben
         const sql1 = 'SELECT * FROM felhasznalok WHERE email = ?'
         const [result] = await db.query(sql1, [ujEmail]);
-        if(result.length){
-            return res.status(403).json({message: "az email cím már foglalt"})
+        if (result.length) {
+            return res.status(403).json({ message: "az email cím már foglalt" })
         }
         // ha minden OK, akkor módosítom az emailt!
-        const sql2= 'UPDATE felhasznalok SET email = ? WHERE id = ?'
-        await db.query(sql2,[ujEmail,req.user.id]);
-        return res.status(200).json({message: "Sikeresen módosult az email"})
+        const sql2 = 'UPDATE felhasznalok SET email = ? WHERE id = ?'
+        await db.query(sql2, [ujEmail, req.user.id]);
+        return res.status(200).json({ message: "Sikeresen módosult az email" })
     } catch (error) {
         console.log(error);
-        res.status(500).json({message: "szerverhiba"})
+        res.status(500).json({ message: "szerverhiba" })
     }
 })
 
 app.put('/felhasznalonev', auth, async (req, res) => {
-    const {ujFelhasznalonev}=req.body;
+    const { ujFelhasznalonev } = req.body;
     // megnézem, hogy megadta-e body-ban az új felhasználónevet a felhasznalo
     if (!ujFelhasznalonev) {
-        return res.status(401).json({message: "Az új felhasználónév megadása kötelező"})
+        return res.status(401).json({ message: "Az új felhasználónév megadása kötelező" })
     }
     try {
         // megnézem, hogy az felhasználónév szerepel-e a rendszerben
         const sql1 = 'SELECT * FROM felhasznalok WHERE felhasznalonev = ?'
         const [result] = await db.query(sql1, [ujFelhasznalonev]);
-        if(result.length){
-            return res.status(403).json({message: "ez a felhasználónév már foglalt"})
+        if (result.length) {
+            return res.status(403).json({ message: "ez a felhasználónév már foglalt" })
         }
         // ha minden OK, akkor módosítom a felhasználónevet!
-        const sql2= 'UPDATE felhasznalok SET felhasznalonev = ? WHERE id = ?'
-        await db.query(sql2,[ujFelhasznalonev,req.user.id]);
-        return res.status(200).json({message: "Sikeresen módosult a felhasználónév"})
+        const sql2 = 'UPDATE felhasznalok SET felhasznalonev = ? WHERE id = ?'
+        await db.query(sql2, [ujFelhasznalonev, req.user.id]);
+        return res.status(200).json({ message: "Sikeresen módosult a felhasználónév" })
     } catch (error) {
         console.log(error);
-        res.status(500).json({message: "szerverhiba"})
+        res.status(500).json({ message: "szerverhiba" })
     }
 })
 
-app.delete('/fiokom',auth,async (req, res)=>{
+// VEDETT
+app.put('/jelszo', auth, async (req, res) => {
+    const { jelenlegiJelszo, ujJelszo } = req.body;
+    if (!jelenlegiJelszo || !ujJelszo) {
+        return res.status(400).json({ message: "Hiányzó bemeneteli adatok" })
+    }
+    try {
+        // a felhasználóhoz tartozó hash-elt jelszót megkeresem
+        const sql = 'SELECT * FROM felhasznalok WHERE id = ?'
+        const [rows] = await db.query(sql, [req.user.id]);
+        const user = rows[0];
+        const hashJelszo = user.jelszo;
+        // a jelenlegi jelszót összevetjük a hashelt jelszóval
+        const ok = bcrypt.compare(jelenlegiJelszo, hashJelszo)
+        if(!ok){
+            return res.status(401).json({message: "A régi jelszó nem helyes"})
+        }
+        // új jelszó hash-elése
+        const hashUjJelszo = await bcrypt.hash(ujJelszo, 10);
+        // új jelszó beállítása
+        const sql2 = 'UPDATE felhasznalok SET jelszo = ? WHERE id = ?'
+        await db.query(sql2, [hashUjJelszo, req.user.id]);
+        return res.status(200).json({ message: "Sikeresen módosult a jelszavad" })
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "szerverhiba" })
+    }
+})
+
+app.delete('/fiokom', auth, async (req, res) => {
     try {
         // törölni kell a felhasznélót
         const sql = 'DELETE FROM felhasznalok WHERE id = ?'
-        await db.query(sql,[req.user.id])
+        await db.query(sql, [req.user.id])
         // utolsó lépés
         res.clearCookie(COOKIE_NAME, { path: '/' });
-        res.status(200).json({message: "Sikeres fióktörlés"})
+        res.status(200).json({ message: "Sikeres fióktörlés" })
     } catch (error) {
         console.log(error);
-        res.status(500).json({message: "szerverhiba"})
+        res.status(500).json({ message: "szerverhiba" })
     }
 })
 
