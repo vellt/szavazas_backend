@@ -5,6 +5,8 @@ const mysql = require('mysql2/promise')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const emailValidator = require('node-email-verifier');
+const multer = require('multer')
+const path= require('path')
 
 // --- config ---
 const PORT = 3000; // sulis szerver miatt majd átíródik
@@ -41,6 +43,7 @@ app.use(cors({
     origin: 'http://localhost:5173',
     credentials: true
 }))
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 
 // --- Middleware ---
 function auth(req, res, next) {
@@ -56,6 +59,16 @@ function auth(req, res, next) {
         return res.status(410).json({ message: "Nem érvényes token" })
     }
 }
+
+const storage= multer.diskStorage({
+    destination: "./uploads/",
+    filename: (req, file, cb)=>{
+        cb(null,Date.now() + path.extname(file.originalname))
+    }
+})
+
+const upload = multer({storage})
+
 
 // --- végpontok ---
 app.post('/regisztracio', async (req, res) => {
@@ -251,6 +264,23 @@ app.delete('/fiokom', auth, async (req, res) => {
         // utolsó lépés
         res.clearCookie(COOKIE_NAME, { path: '/' });
         res.status(200).json({ message: "Sikeres fióktörlés" })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "szerverhiba" })
+    }
+})
+
+app.post('/kepek', auth, upload.single('kep_neve'), async (req, res)=>{
+    const zsuri_id= req.body.zsuri_id;
+    const image= req.file ? req.file.filename : null; 
+    const user= req.user;
+    if(zsuri_id==undefined  || image==null){
+        return res.status(400).json({ message: "Hiányzó bemeneti adatok" })
+    }
+    try {
+        const sql='INSERT INTO kepek (felhasznalo_id, zsuri_id, kep_neve) VALUES (?,?,?)';
+        await db.query(sql,[user.id, zsuri_id, image]);
+        return res.status(200).json({message: 'Sikeres felvitel'})
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "szerverhiba" })
