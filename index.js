@@ -177,6 +177,7 @@ app.get('/adataim', auth, async (req, res) => {
 // VÉDETT
 app.put('/email', auth, async (req, res) => {
     const { ujEmail } = req.body;
+    console.log(ujEmail);
     // megnézem, hogy megadta-e body-ban az új emailt a felhasznalo
     if (!ujEmail) {
         return res.status(401).json({ message: "Az új email megadása kötelező" })
