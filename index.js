@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken')
 const emailValidator = require('node-email-verifier');
 const multer = require('multer')
 const path= require('path')
+const fs = require('fs/promises') // képet törölni
 
 // --- config ---
 const PORT = 3000; // sulis szerver miatt majd átíródik
@@ -144,7 +145,7 @@ app.post('/belepes', async (req, res) => {
             }
         }
 
-        const ok = bcrypt.compare(jelszo, hashJelszo) //felhasznalónév vagy emailhez tartozó jelszó
+        const ok = await bcrypt.compare(jelszo, hashJelszo) //felhasznalónév vagy emailhez tartozó jelszó
         if (!ok) {
             return res.status(403).json({ message: "Rossz jelszót adtál meg!" })
         }
@@ -240,7 +241,7 @@ app.put('/jelszo', auth, async (req, res) => {
         const user = rows[0];
         const hashJelszo = user.jelszo;
         // a jelenlegi jelszót összevetjük a hashelt jelszóval
-        const ok = bcrypt.compare(jelenlegiJelszo, hashJelszo)
+        const ok = await bcrypt.compare(jelenlegiJelszo, hashJelszo)
         if(!ok){
             return res.status(401).json({message: "A régi jelszó nem helyes"})
         }
@@ -288,6 +289,34 @@ app.post('/kepek', auth, upload.single('kep_neve'), async (req, res)=>{
     }
 })
 
+app.get('/kepek', auth, async (req, res)=>{
+    try {
+        const sql='SELECT zsurik.nev as zsuri, kep_neve FROM kepek INNER JOIN zsurik ON zsurik.id=kepek.zsuri_id WHERE felhasznalo_id=?';
+        const [rows] = await db.query(sql,[req.user.id]);
+        return res.status(200).json(rows);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "szerverhiba" })
+    }
+})
+
+app.delete('/kepek', auth, async (req, res)=>{
+    const {kep_neve} = req.body;
+    const felhasznalo_id = req.user.id;
+    try {
+        const sql = 'DELETE FROM kepek WHERE kep_neve = ? AND felhasznalo_id = ?'
+        const [result] = await db.query(sql, [kep_neve, felhasznalo_id]);
+        if(!result.affectedRows){
+            return res.status(404).json({message: "nincs ilyen kép"})
+        }
+        const filePath = path.join(__dirname,'uploads',kep_neve)
+        await fs.unlink(filePath); // kép törlése
+        res.status(200).json({message: 'Sikeres törlés'})
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "szerverhiba" })
+    }
+})
 
 // --- szerver elindítása ---
 app.listen(PORT, HOST, () => {
