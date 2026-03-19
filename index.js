@@ -318,6 +318,17 @@ app.delete('/kepek', auth, async (req, res)=>{
     }
 })
 
+app.get('/szavazatok', async (req, res)=>{
+    try {
+        const sql='SELECT z.id as zsuri_id, z.nev as zsuri, (SELECT COUNT(*) FROM szavazatok as s WHERE s.zsuri_id=z.id) as szavazat FROM zsurik as z'
+        const [rows] = await db.query(sql);
+        return res.status(200).json(rows)
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "szerverhiba" })
+    }
+})
+
 // --- szerver elindítása ---
 app.listen(PORT, HOST, () => {
     console.log(`API fut: http://${HOST}:${PORT}/`);
