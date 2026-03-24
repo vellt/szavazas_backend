@@ -320,9 +320,21 @@ app.delete('/kepek', auth, async (req, res)=>{
 
 app.get('/szavazatok', async (req, res)=>{
     try {
-        const sql='SELECT z.id as zsuri_id, z.nev as zsuri, (SELECT COUNT(*) FROM szavazatok as s WHERE s.zsuri_id=z.id) as szavazat FROM zsurik as z'
+        const sql='SELECT z.id as zsuri_id, z.nev as zsuri, (SELECT COUNT(*) FROM szavazasok as s WHERE s.zsuri_id=z.id) as szavazat FROM zsurik as z'
         const [rows] = await db.query(sql);
         return res.status(200).json(rows)
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "szerverhiba" })
+    }
+})
+
+app.post('/szavazas/:zsuri_id', auth, async (req, res)=>{
+    const {zsuri_id}=req.params;
+    try {
+        const sql='INSERT INTO szavazasok(felhasznalo_id, zsuri_id) VALUES (?,?)'
+        await db.query(sql,[req.user.id, zsuri_id]);
+        return res.status(200).json({message: 'Sikeres szavazás!'})
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "szerverhiba" })
