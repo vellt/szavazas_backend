@@ -61,6 +61,13 @@ function auth(req, res, next) {
     }
 }
 
+function isAdmin(req, res, next) {
+    if(!req.user.admin){
+        return res.status(411).json({ message: "Nincs megfelelő jogosultság" })
+    }
+    next();
+}
+
 const storage= multer.diskStorage({
     destination: "./uploads/",
     filename: (req, file, cb)=>{
@@ -335,6 +342,36 @@ app.post('/szavazas/:zsuri_id', auth, async (req, res)=>{
         const sql='INSERT INTO szavazasok(felhasznalo_id, zsuri_id) VALUES (?,?)'
         await db.query(sql,[req.user.id, zsuri_id]);
         return res.status(200).json({message: 'Sikeres szavazás!'})
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "szerverhiba" })
+    }
+})
+
+app.get('/gyoztes', async (req, res)=>{
+    try {
+        const sql =`SELECT 
+                    COUNT(felhasznalo_id) as db, 
+                    z.nev, 
+                    (SELECT k.kep_neve FROM kepek as k WHERE k.zsuri_id=z.id ORDER BY RAND() LIMIT 1) as kep 
+                    FROM szavazasok as s INNER JOIN zsurik as z ON (z.id=s.zsuri_id) 
+                    GROUP BY s.zsuri_id
+                    ORDER BY db DESC
+                    LIMIT 1`;
+        const [rows] = await db.query(sql);
+        return res.status(200).json(rows[0])
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "szerverhiba" })
+    }
+})
+
+
+app.get('/felhasznalok', auth, isAdmin, async (req, res)=>{
+    try {
+        const sql='SELECT id, email, felhasznalonev, admin FROM felhasznalok';
+        const [rows]= await db.query(sql);
+        return res.status(200).json(rows)
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "szerverhiba" })
