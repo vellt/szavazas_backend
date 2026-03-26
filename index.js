@@ -369,9 +369,37 @@ app.get('/gyoztes', async (req, res)=>{
 
 app.get('/felhasznalok', auth, isAdmin, async (req, res)=>{
     try {
-        const sql='SELECT id, email, felhasznalonev, admin FROM felhasznalok';
-        const [rows]= await db.query(sql);
+        const sql='SELECT id, email, felhasznalonev, admin FROM felhasznalok where id <> ?';
+        const [rows]= await db.query(sql, [req.user.id]);
         return res.status(200).json(rows)
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "szerverhiba" })
+    }
+})
+
+app.delete('/felhasznalo/:id', auth, isAdmin, async (req, res)=>{
+    const {id} = req.params; 
+    try {
+        const sql ='DELETE FROM felhasznalok WHERE id = ?';
+        await db.query(sql, [id]);
+        return res.status(200).json({message: 'Sikeres törlés'})
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "szerverhiba" })
+    }
+})
+
+app.put('/szerepkor/:felhasznalo_id', auth, isAdmin, async (req, res)=>{
+    const {felhasznalo_id} = req.params; 
+    const {szerepkor} = req.body;
+    if(szerepkor == undefined){
+        return res.status(400).json({message: 'A szerepkör megadása kötelező'})
+    }
+    try {
+        const sql ='UPADTE felhasznalok SET admin = ? WHERE id = ?';
+        await db.query(sql, [szerepkor, felhasznalo_id]);
+        return res.status(200).json({message: 'Sikeres módosítás'})
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "szerverhiba" })
