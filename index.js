@@ -393,11 +393,12 @@ app.delete('/felhasznalo/:id', auth, isAdmin, async (req, res)=>{
 app.put('/szerepkor/:felhasznalo_id', auth, isAdmin, async (req, res)=>{
     const {felhasznalo_id} = req.params; 
     const {szerepkor} = req.body;
+    console.log(felhasznalo_id, szerepkor);
     if(szerepkor == undefined){
         return res.status(400).json({message: 'A szerepkör megadása kötelező'})
     }
     try {
-        const sql ='UPADTE felhasznalok SET admin = ? WHERE id = ?';
+        const sql ='UPDATE felhasznalok SET admin = ? WHERE id = ?';
         await db.query(sql, [szerepkor, felhasznalo_id]);
         return res.status(200).json({message: 'Sikeres módosítás'})
     } catch (error) {
