@@ -47,14 +47,20 @@ app.use(cors({
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 
 // --- Middleware ---
-function auth(req, res, next) {
+async function auth(req, res, next) {
     const token = req.cookies[COOKIE_NAME];
     if (!token) { // le van járva a cookie --> nem érvényes
         return res.status(409).json({ message: "Nincs bejelentkezés" })
     }
     try {
         // tokenből kinyerni a felhasználói adatokat!
-        req.user = jwt.verify(token, JWT_SECRET)
+        const user = jwt.verify(token, JWT_SECRET)
+        const sql = 'SELECT * FROM felhasznalok WHERE id = ?'
+        const [rows] = await db.query(sql, [user.id]);
+        if (rows.length) {
+            const user = rows[0];
+            req.user= { id: user.id, email: user.email, felhasznalonev: user.felhasznalonev, admin: user.admin }
+        } 
         next(); // haladhat tovább a végpontban
     } catch (error) {
         return res.status(410).json({ message: "Nem érvényes token" })
